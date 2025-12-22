@@ -9,7 +9,7 @@ df["Amp Rating"] = df["Amp Rating"].str.extract('(\\d+)').astype(int)
 df["Performance %"] = df["Performance %"].astype(int)
 df["LSI"] = (df["Frame Rating"] >= 800) | (df["Trip Unit"].str.contains("ETS", na=False))
 
-st.header("LS Configurator for LFG Switchboards")
+st.header("LS BOM Builder for LFG Switchboards")
 
 st.subheader("Switchboard Properties")
 sb1, sb2, sb3 = st.columns(3)
@@ -75,20 +75,20 @@ cb = result[result['List Price'] == result['List Price'].min()]
 
 #st.write(result[['Item #', 'Part #', 'List Price', '240V kAIC', '480V kAIC']])
 st.write(cb[['Item #', 'Part #', 'List Price', '240V kAIC', '480V kAIC']])
-bom1, bom2, bom3 = st.columns([2,2,5])
+bom1, bom2 = st.columns([2,7])
 with bom1:
     qty = st.number_input("Quantity to add", min_value = -1, max_value = 10, value = 1)
 with bom2:
     b_type = st.segmented_control("Breaker Type", options = ["Main", "Branch"], default=None)
-with bom3:
-    add_to_bom = st.button("*Add to BOM*", width = 'stretch')
+
+add_to_bom = st.button("**Add to BOM**", width = 'stretch')
 
 # BREAKER BOM SECTION----------------------------------------------------------------------------------------
 BBOM_header1, BBOM_header2 = st.columns([5,1])
 with BBOM_header1:
     st.subheader("Bill of Materials")
 with BBOM_header2:
-    reset = st.button("Reset BOM")
+    reset = st.button("*Reset BOM*")
 
 st.write('**Breakers**')
 
@@ -108,7 +108,7 @@ if add_to_bom:
     elif b_type == "Branch":
         st.session_state.BOM_df.loc[st.session_state.BOM_df['Item #'] == cb['Item #'].iloc[0], 'Branch Qty'] += qty
     else:
-        st.write("Please select a breaker type")
+        st.warning(":red[Breaker not added. Please select a breaker type.]")
 
 if reset:
     #st.write("BOM Reset")
