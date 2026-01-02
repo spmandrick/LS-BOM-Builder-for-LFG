@@ -2,13 +2,6 @@ import math
 import streamlit as st
 import pandas as pd
 
-df = pd.read_csv("LS_CBs.csv")
-df.pop("Unnamed: 0")
-df["Frame Rating"] = df["Frame Rating"].astype(int)
-df["Amp Rating"] = df["Amp Rating"].str.extract('(\\d+)').astype(int)
-df["Performance %"] = df["Performance %"].astype(int)
-df["LSI"] = (df["Frame Rating"] >= 800) | (df["Trip Unit"].str.contains("ETS", na=False))
-
 st.header("LS BOM Builder for LFG Switchboards")
 
 st.subheader("Switchboard Properties")
@@ -19,6 +12,15 @@ with sb2:
     V = st.segmented_control("Voltage", options = ["120/208V", "277/480V"], default=None)
 with sb3:
     kAIC = st.segmented_control("kAIC", options = [35, 50, 65, 100], default=None)
+
+# BREAKER LOGIC -----------------------------------------------------------------------------------
+
+df = pd.read_csv("LS_CBs.csv")
+df.pop("Unnamed: 0")
+df["Frame Rating"] = df["Frame Rating"].astype(int)
+df["Amp Rating"] = df["Amp Rating"].str.extract('(\\d+)').astype(int)
+df["Performance %"] = df["Performance %"].astype(int)
+df["LSI"] = (df["Frame Rating"] >= 800) | (df["Trip Unit"].str.contains("ETS", na=False))
 
 st.subheader("Breaker Properties")
 brk1, brk2, brk3 = st.columns([3,2,5])
@@ -36,9 +38,15 @@ for size in LS_frame_sizes:
     if amp_r <= size:
         fs = size
         break
+
+# This below line does most of the filtering, and almost all of it for ACBs
 result = df.query('`Amp Rating` >= @amp_r and `Frame Rating` == @fs')
 
-#Filter by other options (only need if <= 1200A, all larger have LSI, 100% ATU and 100kAIC)
+# The only weird situation for ACBs, (for 3000A ACBs, we use 3200 frame with 3000A rating)
+if fs == 3200 and amp_r <= 3000:
+    result = result[result['Amp Rating'] == 3000]
+
+#Filter by other options for MCCBs (all ACBs have LSI, 100% perf, ATU and 100kAIC)
 if amp_r <= 1200:
 
     # Filter by performance %
@@ -73,6 +81,7 @@ if amp_r <= 1200:
 # May have multiple results with different breaking cpacities, so we pick the cheapest one here
 cb = result[result['List Price'] == result['List Price'].min()]
 
+# RECOMMENDED BREAKER SECTION -------------------------------------------------------------------------------
 st.subheader("Recommended LS Breaker")
 #st.write(result[['Item #', 'Part #', 'List Price', '240V kAIC', '480V kAIC']])
 st.write(cb[['Item #', 'Part #', 'List Price', '240V kAIC', '480V kAIC']])
@@ -82,14 +91,15 @@ with bom1:
 with bom2:
     b_type = st.segmented_control("Breaker Type", options = ["Main", "Branch"], default=None)
 
-add_to_bom = st.button("**Add to BOM**", width = 'stretch')
+add_to_bom = st.button("**Add Breaker to Board BOM**", width = 'stretch', type ="primary")
 
 # BREAKER BOM SECTION----------------------------------------------------------------------------------------
-BBOM_header1, BBOM_header2 = st.columns([5,1])
+st.space("medium")
+BBOM_header1, BBOM_header2 = st.columns([3,1])
 with BBOM_header1:
-    st.subheader("Bill of Materials")
+    st.subheader("Board Bill of Materials")
 with BBOM_header2:
-    reset = st.button("*Reset BOM*")
+    reset = st.button("*Reset Board BOM*")
 
 st.write('**Breakers**')
 
@@ -117,7 +127,8 @@ if reset:
     st.session_state.BOM_df["Branch Qty"] = 0
 
 BOM_filter = (st.session_state.BOM_df['Main Qty'] > 0) | (st.session_state.BOM_df['Branch Qty'] > 0)
-st.write(st.session_state.BOM_df[BOM_filter][['Main Qty', 'Branch Qty', 'Item #', 'Part #']].head(10))
+cbBOM = st.session_state.BOM_df[BOM_filter][['Main Qty', 'Branch Qty', 'Item #', 'Part #']]
+st.write(cbBOM.head(10))
 
 # STRAP BOM SECTION----------------------------------------------------------------------------------------
 st.write("**Straps**")
@@ -147,8 +158,8 @@ for fr, qty in st.session_state.branch_qtys.items():
 
 st.session_state.strap_df["Qty"] = st.session_state.strap_qtys.values()
 
-st.write(st.session_state.strap_df[st.session_state.strap_df['Qty'] > 0][['Qty', 'Item #', 'Part #']].head(10))
-#st.write(st.session_state.strap_df[st.session_state.strap_df['Qty'] > 0][['Qty', 'Item #', 'Part #', 'List Price']].head(10))
+strapBOM = st.session_state.strap_df[st.session_state.strap_df['Qty'] > 0][['Qty', 'Item #', 'Part #']]
+st.write(strapBOM.head(10))
 
 # INTERIOR BOM SECTION----------------------------------------------------------------------------------------
 int1, int2 = st.columns([5,1])
@@ -162,6 +173,40 @@ int = int_df[int_df['Amperage'] == int_df[int_df['Amperage'] >= main_amp]['Amper
 int_Xs = int['X Spaces'].iloc[0]
 int.insert(0, 'Qty', math.ceil(X_spaces / int_Xs))
 if X_spaces > 0:
-    st.write(int[['Qty','Item #', 'Part #']])
+    intBOM = int[['Qty','Item #', 'Part #']]
 else:
-    st.write(int[int['Amperage'] == 0][['Qty','Item #', 'Part #']]) # Just prints empty list cuz OCD
+    # Just print empty list to look uniform
+    intBOM = int[int['Amperage'] == 0][['Qty','Item #', 'Part #']]
+st.write(intBOM)
+
+# PROJECT BOM AND CSV SECTION ------------------------------------------------------------------------------------
+if 'BOM' not in st.session_state:
+    st.session_state.BOM = pd.DataFrame({'Board':[], 'Qty':[], 'Item #':[], 'Part #':[]})
+
+board_name = st.text_input("Switchboard Name")
+add_to_proj_BOM = st.button("**Add Board BOM to Project BOM**", width = "stretch", type ="primary")
+if add_to_proj_BOM:
+    if board_name == '':
+        st.warning(":red[Board BOM not added. Please indicate switchboard name above.]")
+    else:
+        for i, cb in cbBOM.iterrows():
+            st.session_state.BOM.loc[len(st.session_state.BOM)] = [board_name, cb['Main Qty'] + cb['Branch Qty'], cb['Item #'], cb['Part #']]
+        for i, strap in strapBOM.iterrows():
+            st.session_state.BOM.loc[len(st.session_state.BOM)] = [board_name, strap['Qty'], strap['Item #'], strap['Part #']]
+        for i, interior in intBOM.iterrows():
+            st.session_state.BOM.loc[len(st.session_state.BOM)] = [board_name, interior['Qty'], interior['Item #'], interior['Part #']]
+
+st.space("medium")
+pbom1, pbom2 = st.columns([3,1])
+with pbom1:
+    st.subheader("Project Bill of Materials")
+with pbom2:
+    reset_PBOM = st.button("*Reset Project BOM*")
+
+if reset_PBOM:
+    st.session_state.BOM = pd.DataFrame({'Board':[], 'Qty':[], 'Item #':[], 'Part #':[]})
+
+st.write(st.session_state.BOM)
+
+proj_name = st.text_input("Project Name")
+st.download_button(label='**Download CSV**', data = st.session_state.BOM.to_csv().encode("utf-8"), file_name= f'{proj_name} LS BOM.csv', width = "stretch", type ="primary")
