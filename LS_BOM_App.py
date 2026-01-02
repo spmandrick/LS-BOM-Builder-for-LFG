@@ -81,8 +81,9 @@ if amp_r <= 1200:
 # May have multiple results with different breaking cpacities, so we pick the cheapest one here
 cb = result[result['List Price'] == result['List Price'].min()]
 
-#st.write(result[['Item #', 'Part #', 'List Price', '240V kAIC', '480V kAIC']])
 st.write(cb[['Item #', 'Part #', 'List Price', '240V kAIC', '480V kAIC']])
+
+st.space("small")
 bom1, bom2 = st.columns([2,7])
 with bom1:
     qty = st.number_input("Quantity to add", min_value = -1, max_value = 10, value = 1)
@@ -179,20 +180,26 @@ st.write(intBOM)
 
 # PROJECT BOM AND CSV SECTION ------------------------------------------------------------------------------------
 if 'BOM' not in st.session_state:
-    st.session_state.BOM = pd.DataFrame({'Board':[], 'Qty':[], 'Item #':[], 'Part #':[]})
+    st.session_state.BOM = pd.DataFrame({'Board':[], 'Product':[], 'Qty':[], 'Item #':[], 'Part #':[]})
+if 'board_list' not in st.session_state:
+    st.session_state.board_list = []
 
+st.space("small")
 board_name = st.text_input("Switchboard Name")
 add_to_proj_BOM = st.button("**Add Board BOM to Project BOM**", width = "stretch", type ="primary")
 if add_to_proj_BOM:
     if board_name == '':
         st.warning(":red[Board BOM not added. Please indicate switchboard name above.]")
+    elif board_name in st.session_state.board_list:
+        st.warning(":red[Board with this name already created. Please change the name above or delete the board with this name below.]")
     else:
+        st.session_state.board_list.append(board_name)
         for i, cb in cbBOM.iterrows():
-            st.session_state.BOM.loc[len(st.session_state.BOM)] = [board_name, cb['Main Qty'] + cb['Branch Qty'], cb['Item #'], cb['Part #']]
+            st.session_state.BOM.loc[len(st.session_state.BOM)] = [board_name, "Breaker", cb['Main Qty'] + cb['Branch Qty'], cb['Item #'], cb['Part #']]
         for i, strap in strapBOM.iterrows():
-            st.session_state.BOM.loc[len(st.session_state.BOM)] = [board_name, strap['Qty'], strap['Item #'], strap['Part #']]
+            st.session_state.BOM.loc[len(st.session_state.BOM)] = [board_name, "Strap", strap['Qty'], strap['Item #'], strap['Part #']]
         for i, interior in intBOM.iterrows():
-            st.session_state.BOM.loc[len(st.session_state.BOM)] = [board_name, interior['Qty'], interior['Item #'], interior['Part #']]
+            st.session_state.BOM.loc[len(st.session_state.BOM)] = [board_name, "Interior", interior['Qty'], interior['Item #'], interior['Part #']]
 
 st.space("medium")
 pbom1, pbom2 = st.columns([3,1])
@@ -204,7 +211,22 @@ with pbom2:
 if reset_PBOM:
     st.session_state.BOM = pd.DataFrame({'Board':[], 'Qty':[], 'Item #':[], 'Part #':[]})
 
+st.space("small")
+dlt_brd1, dlt_brd2 = st.columns([8,1])
+with dlt_brd1:
+    brd_to_delete = st.selectbox("Select a board you may wish to delete", options = st.session_state.board_list, index = None)
+with dlt_brd2:
+    dlt_brd = st.button("*Delete Board*")
+
+if dlt_brd:
+    if brd_to_delete != None:
+        st.session_state.board_list.remove(brd_to_delete)
+        st.session_state.BOM = st.session_state.BOM[st.session_state.BOM['Board'] != brd_to_delete]
+    else:
+        st.warning(":red[No board deleted. Please select a board you wish to delete.]")
+
 st.write(st.session_state.BOM)
 
+st.space("small")
 proj_name = st.text_input("Project Name")
 st.download_button(label='**Download CSV**', data = st.session_state.BOM.to_csv().encode("utf-8"), file_name= f'{proj_name} LS BOM.csv', width = "stretch", type ="primary")
