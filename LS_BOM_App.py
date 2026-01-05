@@ -81,9 +81,10 @@ if amp_r <= 1200:
 # May have multiple results with different breaking cpacities, so we pick the cheapest one here
 cb = result[result['List Price'] == result['List Price'].min()]
 
+st.space("small")
+st.subheader("Recommended Breaker")
 st.write(cb[['Item #', 'Part #', 'List Price', '240V kAIC', '480V kAIC']])
 
-st.space("small")
 bom1, bom2 = st.columns([2,7])
 with bom1:
     qty = st.number_input("Quantity to add", min_value = -1, max_value = 10, value = 1)
