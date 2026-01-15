@@ -2,8 +2,30 @@ import math
 import streamlit as st
 import pandas as pd
 
-st.header("LS BOM Builder for LFG Switchboards")
+#Function to load custom CSS
+def local_css(file_name):
+   with open(file_name) as f:
+       st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
+#Load the CSS file
+local_css("assets/style.css")
+
+LS = "data/LS-Logo.jpg"
+LFG = "data/LFG-Logo-App_Colors.jpg"
+
+h1, h2, h3, h4 = st.columns([8,1,6,12])
+with h1:
+    st.image([LFG], width=250)
+with h2:
+    st.subheader("x")
+with h3:
+    st.image([LS], width=140)
+with h4:
+    st.header("BOM Builder")
+
+#st.button("CSS Test Button", key="green_button")
+
+st.space("small")
 st.subheader("Switchboard Properties")
 sb1, sb2, sb3 = st.columns(3)
 with sb1:
@@ -15,7 +37,7 @@ with sb3:
 
 # BREAKER LOGIC -----------------------------------------------------------------------------------
 
-df = pd.read_csv("LS_CBs.csv")
+df = pd.read_csv("data/LS_CBs.csv")
 df.pop("Unnamed: 0")
 df["Frame Rating"] = df["Frame Rating"].astype(int)
 df["Amp Rating"] = df["Amp Rating"].str.extract('(\\d+)').astype(int)
@@ -91,9 +113,10 @@ with bom1:
 with bom2:
     b_type = st.segmented_control("Breaker Type", options = ["Main", "Branch"], default=None)
 
-add_to_bom = st.button("**Add Breaker to Board BOM**", width = 'stretch', type ="primary")
+add_to_bom = st.button("**Add Breaker to Board BOM**", width = "stretch", type ="primary")
 
 # BREAKER BOM SECTION----------------------------------------------------------------------------------------
+
 st.space("medium")
 BBOM_header1, BBOM_header2 = st.columns([3,1])
 with BBOM_header1:
@@ -105,7 +128,7 @@ st.write('**Breakers**')
 
 # Creating a copy of the dataframe to use for the BOM
 if 'BOM_df' not in st.session_state:
-    st.session_state.BOM_df = pd.read_csv("LS_CBs.csv")
+    st.session_state.BOM_df = pd.read_csv("data/LS_CBs.csv")
     st.session_state.BOM_df.pop("Unnamed: 0")
     st.session_state.BOM_df["Frame Rating"] = st.session_state.BOM_df["Frame Rating"].astype(int)
     st.session_state.BOM_df["Amp Rating"] = st.session_state.BOM_df["Amp Rating"].str.extract('(\\d+)').astype(int)
@@ -131,9 +154,10 @@ cbBOM = st.session_state.BOM_df[BOM_filter][['Main Qty', 'Branch Qty', 'Item #',
 st.write(cbBOM.head(10))
 
 # STRAP BOM SECTION----------------------------------------------------------------------------------------
+
 st.write("**Straps**")
 if 'Strap_BOM_df' not in st.session_state:
-    st.session_state.strap_df = pd.read_csv("LS_Straps.csv")
+    st.session_state.strap_df = pd.read_csv("data/LS_Straps.csv")
     st.session_state.strap_df.insert(0, 'Qty', 0)
 
 st.session_state.branch_qtys = {150: 0, 250: 0, 400: 0, 600: 0, 800: 0, 1200: 0}
@@ -162,13 +186,14 @@ strapBOM = st.session_state.strap_df[st.session_state.strap_df['Qty'] > 0][['Qty
 st.write(strapBOM.head(10))
 
 # INTERIOR BOM SECTION----------------------------------------------------------------------------------------
+
 int1, int2 = st.columns([5,1])
 with int1:
     st.write("**Interiors**")
 with int2:
     st.write(f'X Spaces: \t {X_spaces}')
 
-int_df = pd.read_csv("LS_Interiors.csv")
+int_df = pd.read_csv("data/LS_Interiors.csv")
 int = int_df[int_df['Amperage'] == int_df[int_df['Amperage'] >= main_amp]['Amperage'].min()]
 int_Xs = int['X Spaces'].iloc[0]
 int.insert(0, 'Qty', math.ceil(X_spaces / int_Xs))
@@ -180,6 +205,7 @@ else:
 st.write(intBOM)
 
 # PROJECT BOM AND CSV SECTION ------------------------------------------------------------------------------------
+
 if 'BOM' not in st.session_state:
     st.session_state.BOM = pd.DataFrame({'Board':[], 'Product':[], 'Qty':[], 'Item #':[], 'Part #':[]})
 if 'board_list' not in st.session_state:
@@ -203,7 +229,7 @@ if add_to_proj_BOM:
             st.session_state.BOM.loc[len(st.session_state.BOM)] = [board_name, "Interior", interior['Qty'], interior['Item #'], interior['Part #']]
 
 st.space("medium")
-pbom1, pbom2 = st.columns([3,1])
+pbom1, pbom2 = st.columns([5,2])
 with pbom1:
     st.subheader("Project Bill of Materials")
 with pbom2:
@@ -213,7 +239,7 @@ if reset_PBOM:
     st.session_state.BOM = pd.DataFrame({'Board':[], 'Qty':[], 'Item #':[], 'Part #':[]})
 
 st.space("small")
-dlt_brd1, dlt_brd2 = st.columns([8,1])
+dlt_brd1, dlt_brd2 = st.columns([7,1])
 with dlt_brd1:
     brd_to_delete = st.selectbox("Select a board you may wish to delete", options = st.session_state.board_list, index = None)
 with dlt_brd2:

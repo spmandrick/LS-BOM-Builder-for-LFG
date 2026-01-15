@@ -1,0 +1,17 @@
+.st-key-green_button {
+    background-color: #28a745;
+    color: #1012a8;
+    border-radius: 50px;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+}
+
+.st-key-green_button:hover {
+    background-color: #2b20c2;
+}
+
+body {
+background-color: #be540e;
+color: #2124af;
+}
