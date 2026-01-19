@@ -25,8 +25,9 @@ with h4:
 
 #st.button("CSS Test Button", key="green_button")
 
-st.space("small")
+proj_name = st.text_input("Project Name")
 st.subheader("Switchboard Properties")
+board_name = st.text_input("Switchboard Name")
 sb1, sb2, sb3 = st.columns(3)
 with sb1:
     main_amp = st.select_slider("Main Amperage", options = [1200,1600,2000,2500,3000,4000], value = 4000)
@@ -212,7 +213,6 @@ if 'board_list' not in st.session_state:
     st.session_state.board_list = []
 
 st.space("small")
-board_name = st.text_input("Switchboard Name")
 add_to_proj_BOM = st.button("**Add Board BOM to Project BOM**", width = "stretch", type ="primary")
 if add_to_proj_BOM:
     if board_name == '':
@@ -255,5 +255,4 @@ if dlt_brd:
 st.write(st.session_state.BOM)
 
 st.space("small")
-proj_name = st.text_input("Project Name")
 st.download_button(label='**Download CSV**', data = st.session_state.BOM.to_csv().encode("utf-8"), file_name= f'{proj_name} LS BOM.csv', width = "stretch", type ="primary")
