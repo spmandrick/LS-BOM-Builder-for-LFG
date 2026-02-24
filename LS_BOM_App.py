@@ -10,18 +10,12 @@ def local_css(file_name):
 #Load the CSS file
 local_css("assets/style.css")
 
-LS = "data/LS-Logo.jpg"
+
 LFG = "data/LFG-Logo-App_Colors.jpg"
 
-h1, h2, h3, h4 = st.columns([8,1,6,12])
-with h1:
-    st.image([LFG], width=250)
-with h2:
-    st.subheader("x")
-with h3:
-    st.image([LS], width=140)
-with h4:
-    st.header("BOM Builder")
+st.image([LFG], width=250)
+
+st.title("LS Switchboard BOM Builder")
 
 #st.button("CSS Test Button", key="green_button")
 
